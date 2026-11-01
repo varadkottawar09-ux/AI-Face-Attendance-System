@@ -3,8 +3,6 @@ from datetime import datetime
 from functools import wraps
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify, make_response
 from werkzeug.utils import secure_filename
-import numpy as np
-import face_recognition
 
 APP_DIR = os.path.dirname(os.path.abspath(__file__))
 DB_PATH = os.path.join(APP_DIR, "attendance.db")
@@ -84,6 +82,8 @@ def add_student():
         flash("Enter roll number, name, and upload a JPG/PNG photo.")
         return redirect(url_for("dashboard"))
     try:
+        import face_recognition
+        import numpy as np
         image = face_recognition.load_image_file(photo.stream)
         encodings = face_recognition.face_encodings(image)
         if len(encodings) != 1:
@@ -121,6 +121,8 @@ def recognize():
     data = payload.get("image", "")
     if "," in data: data = data.split(",", 1)[1]
     try:
+        import face_recognition
+        import numpy as np
         image = face_recognition.load_image_file(io.BytesIO(base64.b64decode(data)))
         encodings = face_recognition.face_encodings(image, face_recognition.face_locations(image, model="hog"))
         if not encodings: return jsonify(ok=False, message="No face detected. Look at the camera and try again.")
