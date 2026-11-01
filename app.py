@@ -10,6 +10,7 @@ UPLOAD_DIR = os.path.join(APP_DIR, "student_photos")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 app = Flask(__name__)
+app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024
 app.secret_key = os.environ.get("SECRET_KEY", "change-this-secret-key-before-deployment")
 ADMIN_USERNAME = os.environ.get("ADMIN_USERNAME", "admin")
 ADMIN_PASSWORD = os.environ.get("ADMIN_PASSWORD", "admin123")
@@ -84,10 +85,19 @@ def add_student():
     try:
         import face_recognition
         import numpy as np
-        image = face_recognition.load_image_file(photo.stream)
-        encodings = face_recognition.face_encodings(image)
+        from PIL import Image
+
+        # Downscale large phone photos before dlib processing to reduce RAM use
+        photo.stream.seek(0)
+        pil_image = Image.open(photo.stream).convert("RGB")
+        pil_image.thumbnail((640, 640))
+        image = np.asarray(pil_image)
+        locations = face_recognition.face_locations(image, model="hog")
+        encodings = face_recognition.face_encodings(
+            image, known_face_locations=locations, num_jitters=1, model="small"
+        )
         if len(encodings) != 1:
-            flash("Photo must contain exactly one clearly visible face.")
+            flash("Photo must contain exactly one clearly visible face. Use a clear front-facing JPG/PNG photo.")
             return redirect(url_for("dashboard"))
         filename = secure_filename(f"{roll}_{photo.filename}")
         photo.stream.seek(0)
